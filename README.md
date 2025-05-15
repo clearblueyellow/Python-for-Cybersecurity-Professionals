@@ -1,4 +1,6 @@
-# Locate Executable Files with Python
+# Python for Cybersecurity Analysts
+
+## Locate Executable Files with Python
 
 This project entails the construction of a Python script to effectively locate .exe files across a computer's filesystem. The solution leverages the standard os and os.path modules, employing os.walk for efficient recursive directory traversal and os.path.splitext for accurate file extension identification. Key considerations for robustness include platform-independent path construction using os.path.join and comprehensive error handling using both try...except blocks within the processing loop and the onerror callback for os.walk to manage permissions issues gracefully.
 
