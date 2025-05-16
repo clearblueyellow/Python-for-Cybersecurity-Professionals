@@ -1,4 +1,4 @@
-# Python for Cybersecurity Analysts
+# Python for Cybersecurity Professionals
 
 ## Locate Executable Files with Python
 
