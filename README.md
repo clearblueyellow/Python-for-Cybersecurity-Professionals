@@ -10,9 +10,7 @@ Packages required: iocextract ioc-finder yara-python
 
 Capabilities: BTC addresses, email addresses, IPs, CVEs, domains, skype usernames, and more. (Read package documentation for complete list.)
 
-YARA Rules: The script includes a basic YARA rule (example_rule) that looks for the string "malicious" in the text. You can expand this by loading your own YARA rule files or defining more complex rules.
-
-Customization: Feel free to modify the YARA rules or add more IOC extraction methods as needed.
+YARA Rules: The script includes a basic YARA rule (example_rule) that looks for the string "malicious" in the text. You can expand this by loading your own YARA rule files or defining more complex rules. Feel free to modify the YARA rules or add more IOC extraction methods as needed.
 
 ## Network Traffic Analyzer (PCAP Parsing)
 
