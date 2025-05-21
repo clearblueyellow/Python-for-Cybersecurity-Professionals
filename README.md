@@ -6,6 +6,12 @@ In the contemporary cybersecurity landscape, Security Operations Centers (SOCs) 
 
 SOC analysts frequently encounter IOCs—such as IP addresses, domain names, file hashes, and URLs—embedded within unstructured text sources. These sources can include threat intelligence reports, security blogs, forum discussions, social media posts, or even internal incident notes. Manually sifting through large volumes of text to identify and extract these IOCs is a time-consuming, error-prone, and often tedious task. An automated IOC extractor script significantly streamlines this process, enabling analysts to quickly gather potential threat indicators for further investigation, enrichment, or input into security tools like SIEMs or TIPs. This automation frees up valuable analyst time, allowing them to focus on higher-value analytical tasks rather than manual data extraction. The ability to rapidly process diverse textual data for IOCs is crucial for maintaining situational awareness and responding effectively to emerging threats.
 
+Packages needed: iocextract ioc-finder yara-python
+
+YARA Rules: The script includes a basic YARA rule (example_rule) that looks for the string "malicious" in the text. You can expand this by loading your own YARA rule files or defining more complex rules.
+
+Customization: Feel free to modify the YARA rules or add more IOC extraction methods as needed.
+
 ## Network Traffic Analyzer (PCAP Parsing)
 
 Network packet captures (PCAP files) are invaluable for investigating security incidents, understanding network behavior, and performing forensic analysis. Tools like Wireshark provide extensive capabilities for manual PCAP analysis. However, dealing with large PCAP files or performing repetitive analytical tasks can be cumbersome. A Python script for PCAP parsing automates the extraction of specific information, identifies patterns, or flags suspicious activities within network traffic captures. This allows SOC analysts to quickly triage PCAPs, extract key metadata, or perform targeted searches without manually navigating through potentially millions of packets in Wireshark. This automation can significantly speed up the initial stages of network investigation.
