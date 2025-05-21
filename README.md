@@ -6,7 +6,9 @@ In the contemporary cybersecurity landscape, Security Operations Centers (SOCs) 
 
 SOC analysts frequently encounter IOCs—such as IP addresses, domain names, file hashes, and URLs—embedded within unstructured text sources. These sources can include threat intelligence reports, security blogs, forum discussions, social media posts, or even internal incident notes. Manually sifting through large volumes of text to identify and extract these IOCs is a time-consuming, error-prone, and often tedious task. An automated IOC extractor script significantly streamlines this process, enabling analysts to quickly gather potential threat indicators for further investigation, enrichment, or input into security tools like SIEMs or TIPs. This automation frees up valuable analyst time, allowing them to focus on higher-value analytical tasks rather than manual data extraction. The ability to rapidly process diverse textual data for IOCs is crucial for maintaining situational awareness and responding effectively to emerging threats.
 
-Packages needed: iocextract ioc-finder yara-python
+Packages required: iocextract ioc-finder yara-python
+
+Capabilities: BTC addresses, email addresses, IPs, CVEs, domains, skype usernames, and more. (Read package documentation for complete list.)
 
 YARA Rules: The script includes a basic YARA rule (example_rule) that looks for the string "malicious" in the text. You can expand this by loading your own YARA rule files or defining more complex rules.
 
