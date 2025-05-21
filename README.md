@@ -16,6 +16,12 @@ YARA Rules: The script includes a basic YARA rule (example_rule) that looks for 
 
 Network packet captures (PCAP files) are invaluable for investigating security incidents, understanding network behavior, and performing forensic analysis. Tools like Wireshark provide extensive capabilities for manual PCAP analysis. However, dealing with large PCAP files or performing repetitive analytical tasks can be cumbersome. A Python script for PCAP parsing automates the extraction of specific information, identifies patterns, or flags suspicious activities within network traffic captures. This allows SOC analysts to quickly triage PCAPs, extract key metadata, or perform targeted searches without manually navigating through potentially millions of packets in Wireshark. This automation can significantly speed up the initial stages of network investigation.
 
+Packages required: wtfis pyshark psutil 
+
+API Key Requirements: Shodan VirusTotal AbuseIPDB
+
+Capabilities: 
+
 ## Splunk Custom Alert Actions/Enrichment Script
 
 Splunk is a cornerstone of many SOCs for log aggregation, searching, and alerting. While Splunk's built-in alerting capabilities are robust, Python scripts can extend them significantly by enabling custom alert actions and automated enrichment of alert data. Instead of an alert merely triggering an email or a ticket, a custom Python script can execute a complex workflow. This could involve querying external threat intelligence feeds for IOCs found in the alert, checking internal asset databases for system ownership, looking up WHOIS information for suspicious domains, or even initiating automated responses like adding an IP to a firewall blocklist via an API. The splunk-alert-script found in the Splunk-Automation-Tools repository, which polls the Splunk API to generate alerts from search results, exemplifies a form of custom alerting logic. Such scripts transform raw alerts into more context-rich and actionable intelligence.
