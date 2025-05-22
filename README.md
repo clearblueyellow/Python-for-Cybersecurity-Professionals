@@ -16,7 +16,7 @@ YARA Rules: The script includes a basic YARA rule (example_rule) that looks for 
 
 Network packet captures (PCAP files) are invaluable for investigating security incidents, understanding network behavior, and performing forensic analysis. Tools like Wireshark provide extensive capabilities for manual PCAP analysis. However, dealing with large PCAP files or performing repetitive analytical tasks can be cumbersome. A Python script for PCAP parsing automates the extraction of specific information, identifies patterns, or flags suspicious activities within network traffic captures. This allows SOC analysts to quickly triage PCAPs, extract key metadata, or perform targeted searches without manually navigating through potentially millions of packets in Wireshark. This automation can significantly speed up the initial stages of network investigation.
 
-Packages required: wtfis pyshark psutil 
+Packages required: pyshark, tkinter, psutil, matplotlib, cartopy, geoip2, requests, pandas, openpyxl, and ipwhois
 
 API Key Requirements: Shodan VirusTotal AbuseIPDB
 
