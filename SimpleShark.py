@@ -88,11 +88,11 @@ class Config:
                 # Merge with defaults to ensure all keys exist
                 settings = self.DEFAULT_SETTINGS.copy()
                 settings.update(loaded)
-                settings["last_modified"] = "2025-05-24 13:55:33"
+                settings["last_modified"] = "2025-05-24 21:37:45"
                 return settings
             else:
                 settings = self.DEFAULT_SETTINGS.copy()
-                settings["created_date"] = "2025-05-24 13:55:33"
+                settings["created_date"] = "2025-05-24 21:37:45"
                 return settings
         except (json.JSONDecodeError, IOError) as e:
             logger.error(f"Failed to load config: {e}")
@@ -101,7 +101,7 @@ class Config:
     def save_settings(self) -> bool:
         """Save settings to file"""
         try:
-            self.settings["last_modified"] = "2025-05-24 13:55:33"
+            self.settings["last_modified"] = "2025-05-24 21:37:45"
             self.settings["modified_by"] = "clearblueyellow"
             
             with open(self.config_file, 'w') as f:
@@ -599,11 +599,7 @@ class SimpleSharkGUI:
         self.capture_start_time = None
         self.display_paused = False
         self.last_update_time = time.time()
-
-        # FIXED: Clear protocol exclude set to ensure all packets are shown
-        self.protocol_exclude = set() # <--- THIS IS THE LINE
-        logger.debug(f"Protocol exclude set cleared: {self.protocol_exclude}")
-
+        
         # GUI control variables
         self.chart_timeframe_var = tk.StringVar(value="minute")
         self.log_filter_var = tk.StringVar(value="All")
@@ -804,9 +800,6 @@ class SimpleSharkGUI:
         
         self.packet_tree = ttk.Treeview(tree_frame, columns=columns, 
                                        show="headings", height=22)
-
-        self.packet_tree.update_idletasks() # Ensure geometry is calculated
-        logger.info(f"Packet Tree Info: Width={self.packet_tree.winfo_width()}, Height={self.packet_tree.winfo_height()}, IsMapped={self.packet_tree.winfo_ismapped()}")
         
         # Enhanced column configuration
         column_config = {
@@ -896,6 +889,8 @@ Thread Status:
 
 Last 5 Protocol Stats:
 {dict(list(self.protocol_stats.items())[:5]) if self.protocol_stats else 'None'}
+
+Root Window Exists: {self.root.winfo_exists() if hasattr(self.root, 'winfo_exists') else 'Unknown'}
         """
         messagebox.showinfo("Debug Information", debug_info)
         logger.debug("Debug info requested by user")
@@ -1511,7 +1506,7 @@ For support or updates, contact the development team."""
             logger.info(f"Capture stopped. Total packets processed: {packet_count}")
     
     def process_packet(self, packet) -> Optional[Dict[str, Any]]:
-        """Enhanced packet processing with fixed threat checking - ENHANCED debugging"""
+        """Enhanced packet processing with fixed numbering - COMPLETELY FIXED"""
         try:
             # Extract basic information
             protocol = getattr(packet, 'highest_layer', 'Unknown').replace("_RAW", "")
@@ -1556,9 +1551,12 @@ For support or updates, contact the development team."""
             # Update statistics
             self.update_statistics(protocol, src_ip, dst_ip, packet_size, timestamp)
             
-            # Create packet record
+            # CRITICAL FIX: Use consistent packet numbering
+            current_packet_num = self.packet_counter
+            
+            # Create packet record with CONSISTENT numbering
             packet_data = {
-                "packet_num": self.packet_counter,
+                "packet_num": current_packet_num,  # Use consistent numbering
                 "timestamp": timestamp,
                 "protocol": protocol,
                 "src_ip": src_ip,
@@ -1571,16 +1569,18 @@ For support or updates, contact the development team."""
                 "info": info
             }
             
-            logger.debug(f"Created packet data: {packet_data}")
+            logger.debug(f"Created packet data with consistent numbering: packet_num={current_packet_num}, protocol={protocol}")
             
             # Cache packet details
             if self.config.settings.get('enable_hex_dumps', True):
-                self.packet_details_cache[self.packet_counter] = self.extract_packet_details(packet)
+                self.packet_details_cache[current_packet_num] = self.extract_packet_details(packet)
             
             # Add to buffer
             self.packet_buffer.add_packet(packet_data)
             
+            # INCREMENT counter AFTER creating the packet data
             self.packet_counter += 1
+            
             return packet_data
             
         except Exception as e:
@@ -1770,7 +1770,7 @@ For support or updates, contact the development team."""
                 time.sleep(1)
     
     def stop_capture(self):
-        """Stop packet capture"""
+        """Stop packet capture - FIXED GUI destruction issue"""
         if not self.running:
             return
         
@@ -1792,11 +1792,18 @@ For support or updates, contact the development team."""
         self.update_status("Capture stopped", self.warning_color)
         self.log_app("Packet capture stopped")
         
-        # Auto-export if we have data
+        # Auto-export if we have data - FIXED to check GUI state
         if self.packet_buffer.size() > 0:
             self.log_app(f"Captured {self.packet_buffer.get_total_seen()} total packets")
-            if messagebox.askyesno("Export Data", "Would you like to export the captured data?"):
-                self.export_to_excel()
+            
+            # CRITICAL FIX: Only show dialog if GUI is still active
+            try:
+                if self.root.winfo_exists():  # Check if window still exists
+                    if messagebox.askyesno("Export Data", "Would you like to export the captured data?"):
+                        self.export_to_excel()
+            except tk.TclError:
+                # GUI has been destroyed, skip dialog
+                logger.info("GUI destroyed, skipping export dialog")
     
     def clear_data(self):
         """Clear all captured data with confirmation"""
@@ -2177,54 +2184,44 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
         self.root.after(5000, self.schedule_logs_update)  # Every 5 seconds
     
     def update_gui(self):
-        """Enhanced GUI update with batch processing - COMPLETELY FIXED"""
+        """Enhanced GUI update with batch processing - FIXED NUMBERING ISSUE"""
         try:
             batch_count = 0
             max_batch = self.config.settings['batch_size']
-            packets_added_this_cycle = 0 # Renamed for clarity
-
+            packets_added = 0
+            
             # DEBUG: Log queue status
             queue_size = self.packet_queue.qsize()
             if queue_size > 0:
-                logger.debug(f"update_gui: Queue has {queue_size} items to process. Display paused: {self.display_paused}")
+                logger.debug(f"GUI update: Queue has {queue_size} items to process. Display paused: {self.display_paused}")
             
-            if self.display_paused: # Check if display is paused
-                # Still process resource updates if any
-                temp_queue_holder = []
-                while not self.packet_queue.empty():
-                    item = self.packet_queue.get_nowait()
-                    if isinstance(item, tuple) and len(item) > 1 and item[0] == "RESOURCE":
-                        if len(item) >= 7:
-                            self.update_resource_display(item[1], item[2], item[3], item[4], item[5], item[6])
-                        else:
-                            self.update_resource_display(item[1], item[2], item[3], item[4], 0, 0)
-                    else:
-                        temp_queue_holder.append(item) # Put non-resource items back
-                for item in temp_queue_holder:
-                    self.packet_queue.put(item)
-                return # Don't process packet items if paused
-
             while batch_count < max_batch:
                 try:
                     item = self.packet_queue.get_nowait()
                     
                     if isinstance(item, dict):
+                        # Packet data - CRITICAL FIX: Check protocol exclusion PROPERLY
                         protocol = item.get("protocol", "")
-                        # Log before checking protocol_exclude
+                        packet_num = item.get("packet_num", "unknown")
+                        
                         logger.debug(f"update_gui: Processing packet item for GUI. Protocol={protocol}, ExcludeSet={self.protocol_exclude}")
+                        
                         if protocol not in self.protocol_exclude:
-                            self.add_packet_to_tree(item) # This method now has detailed logging
-                            packets_added_this_cycle += 1
+                            logger.debug(f"Adding packet {packet_num} to tree: {protocol}")
+                            self.add_packet_to_tree(item)
+                            packets_added += 1
                         else:
-                            logger.debug(f"update_gui: Excluding packet due to protocol_exclude: {protocol}")
+                            logger.debug(f"Excluding packet {packet_num}: {protocol}")
                     
                     elif isinstance(item, tuple) and len(item) > 1 and item[0] == "RESOURCE":
+                        # Enhanced resource monitoring data
                         if len(item) >= 7:
                             self.update_resource_display(item[1], item[2], item[3], item[4], item[5], item[6])
                         else:
                             self.update_resource_display(item[1], item[2], item[3], item[4], 0, 0)
                     
                     elif isinstance(item, tuple) and len(item) > 1 and item[0] == "ERROR":
+                        # Error message
                         self.update_status(f"Error: {item[1]}", self.error_color)
                         self.log_error(item[1])
                     
@@ -2232,36 +2229,6 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
                     
                 except queue.Empty:
                     break
-            
-            if packets_added_this_cycle > 0:
-                logger.debug(f"update_gui: Added {packets_added_this_cycle} packets to tree in this cycle.")
-                # === TRY ADDING THIS LINE ===
-                self.root.update_idletasks() 
-                # =============================
-
-            # Update packet count and rate (this part seems okay)
-            total_packets = self.packet_buffer.get_total_seen()
-            buffer_size = self.packet_buffer.size()
-            
-            self.packet_count_label.config(text=f"Packets: {buffer_size:,} ({total_packets:,} total)")
-            
-            current_time = time.time()
-            if hasattr(self, 'last_update_time_rate_calc'): # Use a distinct variable name
-                time_diff = current_time - self.last_update_time_rate_calc
-                if time_diff >= 1.0:
-                    packet_diff = total_packets - self.last_packet_count_rate_calc
-                    self.packets_per_second = packet_diff / time_diff if time_diff > 0 else 0
-                    self.last_packet_count_rate_calc = total_packets
-                    self.last_update_time_rate_calc = current_time
-            else:
-                self.last_update_time_rate_calc = current_time
-                self.last_packet_count_rate_calc = total_packets
-            
-            self.packets_per_sec_label.config(text=f"Rate: {self.packets_per_second:.1f} pps")
-            
-        except Exception as e:
-            logger.error(f"Error updating GUI: {e}", exc_info=True)
-
             
             # Update packet count and rate
             total_packets = self.packet_buffer.get_total_seen()
@@ -2286,18 +2253,23 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
             
             # DEBUG: Log if packets were added
             if packets_added > 0:
-                logger.debug(f"GUI update: Added {packets_added} packets to tree")
+                logger.debug(f"update_gui: Added {packets_added} packets to tree in this cycle.")
             
+            # CRITICAL FIX: Force GUI update to ensure visibility
+            if packets_added > 0:
+                self.root.update_idletasks()  # Force GUI refresh
+                
         except Exception as e:
             logger.error(f"Error updating GUI: {e}")
     
     def add_packet_to_tree(self, packet_data: Dict[str, Any]):
-        """Enhanced packet tree insertion with detailed logging."""
-        packet_num_for_log = packet_data.get("packet_num", "UNKNOWN_NUM")
-        protocol_for_log = packet_data.get("protocol", "UNKNOWN_PROTO")
-        logger.debug(f"ENTERING add_packet_to_tree for packet_num: {packet_num_for_log}, protocol: {protocol_for_log}")
-        
+        """Enhanced packet tree insertion - CRITICAL DISPLAY FIX"""
         try:
+            packet_num = packet_data.get("packet_num", "unknown")
+            protocol = packet_data.get("protocol", "unknown")
+            
+            logger.debug(f"ENTERING add_packet_to_tree for packet_num: {packet_num}, protocol: {protocol}")
+            
             values = (
                 packet_data.get("packet_num", ""),
                 packet_data.get("timestamp", ""),
@@ -2311,42 +2283,224 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
                 packet_data.get("flags", ""),
                 packet_data.get("info", "")
             )
-            logger.debug(f"Values prepared for packet_num {packet_num_for_log}: {values}")
-
-            # === CRITICAL POINT: THE INSERTION ===
-            item_id = self.packet_tree.insert("", 0, values=values)
-            # =====================================
             
-            logger.info(f"Treeview insert EXECUTED for packet_num {packet_num_for_log}. Returned item_id: '{item_id}'. Protocol: {protocol_for_log}") # Changed to INFO for visibility
-
-            # Check if item_id is valid (Treeview insert returns the item ID string)
-            if not item_id:
-                logger.warning(f"Treeview insert for packet_num {packet_num_for_log} returned an EMPTY item_id. Packet might not be visible.")
+            logger.debug(f"Values prepared for packet_num {packet_num}: {values}")
+            
+            # CRITICAL FIX: Use `end` instead of index 0 to ensure visibility
+            item_id = self.packet_tree.insert("", "end", values=values)
+            
+            logger.info(f"Treeview insert EXECUTED for packet_num {packet_num}. Returned item_id: '{item_id}'. Protocol: {protocol}")
             
             # Color coding based on threats
             flags = packet_data.get("flags", "")
-            if flags and item_id: # Ensure item_id is valid before trying to set flags
-                logger.debug(f"Applying flags for packet_num {packet_num_for_log} (item_id: {item_id}): {flags}")
+            if flags:
+                logger.debug(f"Applying flags for packet_num {packet_num} (item_id: {item_id}): {flags}")
+                
                 if "DROP" in flags or "PHISH" in flags:
                     self.packet_tree.set(item_id, "flags", "🚨 " + flags)
                 elif "SUSP_PORT" in flags:
                     self.packet_tree.set(item_id, "flags", "⚠️ " + flags)
-                else: 
+                elif "EXT_TO_PRIV" in flags:
                     self.packet_tree.set(item_id, "flags", "⚡ " + flags)
+                else:
+                    self.packet_tree.set(item_id, "flags", "⚡ " + flags)
+            
+            # CRITICAL FIX: Force multiple levels of GUI updates
+            self.packet_tree.update_idletasks()
+            self.root.update_idletasks()
+            
+            # CRITICAL FIX: Ensure the item is visible by scrolling to it
+            self.packet_tree.see(item_id)
             
             # Limit tree size for performance
             children = self.packet_tree.get_children()
-            if len(children) > 1000:  # Limit to 1000 visible packets
-                logger.debug(f"Tree size limit ({self.config.settings.get('max_packets_in_tree', 1000)}) reached ({len(children)}), removing oldest.")
-                # Remove oldest entries
-                for old_item in children[1000:]: # Adjust if max_packets_in_tree is used
+            if len(children) > 1000:
+                # Remove oldest entries (first items when using "end")
+                for old_item in children[:-1000]:
                     self.packet_tree.delete(old_item)
             
-            logger.debug(f"EXITING add_packet_to_tree NORMALLY for packet_num: {packet_num_for_log}")
+            logger.debug(f"EXITING add_packet_to_tree NORMALLY for packet_num: {packet_num}")
+            
+            # CRITICAL FIX: Return True to indicate successful addition
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error adding packet to tree: {e}")
+            logger.debug(f"EXITING add_packet_to_tree WITH ERROR for packet_num: {packet_num}")
+            return False
+
+    def update_gui(self):
+        """Enhanced GUI update - CRITICAL DISPLAY FIX"""
+        try:
+            batch_count = 0
+            max_batch = self.config.settings['batch_size']
+            packets_added = 0
+            successful_additions = 0
+            
+            # DEBUG: Log queue status
+            queue_size = self.packet_queue.qsize()
+            if queue_size > 0:
+                logger.debug(f"GUI update: Queue has {queue_size} items to process. Display paused: {self.display_paused}")
+            
+            while batch_count < max_batch:
+                try:
+                    item = self.packet_queue.get_nowait()
+                    
+                    if isinstance(item, dict):
+                        # Packet data - CRITICAL FIX: Check protocol exclusion PROPERLY
+                        protocol = item.get("protocol", "")
+                        packet_num = item.get("packet_num", "unknown")
+                        
+                        logger.debug(f"update_gui: Processing packet item for GUI. Protocol={protocol}, ExcludeSet={self.protocol_exclude}")
+                        
+                        if protocol not in self.protocol_exclude:
+                            logger.debug(f"Adding packet {packet_num} to tree: {protocol}")
+                            
+                            # CRITICAL FIX: Check if addition was successful
+                            if self.add_packet_to_tree(item):
+                                packets_added += 1
+                                successful_additions += 1
+                            else:
+                                logger.error(f"Failed to add packet {packet_num} to tree")
+                        else:
+                            logger.debug(f"Excluding packet {packet_num}: {protocol}")
+                    
+                    elif isinstance(item, tuple) and len(item) > 1 and item[0] == "RESOURCE":
+                        # Enhanced resource monitoring data
+                        if len(item) >= 7:
+                            self.update_resource_display(item[1], item[2], item[3], item[4], item[5], item[6])
+                        else:
+                            self.update_resource_display(item[1], item[2], item[3], item[4], 0, 0)
+                    
+                    elif isinstance(item, tuple) and len(item) > 1 and item[0] == "ERROR":
+                        # Error message
+                        self.update_status(f"Error: {item[1]}", self.error_color)
+                        self.log_error(item[1])
+                    
+                    batch_count += 1
+                    
+                except queue.Empty:
+                    break
+            
+            # Update packet count and rate
+            total_packets = self.packet_buffer.get_total_seen()
+            buffer_size = self.packet_buffer.size()
+            
+            self.packet_count_label.config(text=f"Packets: {buffer_size:,} ({total_packets:,} total)")
+            
+            # Calculate packets per second
+            current_time = time.time()
+            if hasattr(self, 'last_update_time'):
+                time_diff = current_time - self.last_update_time
+                if time_diff >= 1.0:  # Update rate every second
+                    packet_diff = total_packets - self.last_packet_count
+                    self.packets_per_second = packet_diff / time_diff
+                    self.last_packet_count = total_packets
+                    self.last_update_time = current_time
+            else:
+                self.last_update_time = current_time
+                self.last_packet_count = total_packets
+            
+            self.packets_per_sec_label.config(text=f"Rate: {self.packets_per_second:.1f} pps")
+            
+            # DEBUG: Enhanced logging
+            if packets_added > 0:
+                logger.debug(f"update_gui: Added {packets_added} packets to tree in this cycle. Successful: {successful_additions}")
+                
+                # CRITICAL FIX: Force complete GUI refresh after adding packets
+                self.root.update()
+                
+                # CRITICAL FIX: Check tree visibility
+                tree_children = len(self.packet_tree.get_children())
+                logger.debug(f"Tree now has {tree_children} children total")
+                
+            # CRITICAL FIX: Always force GUI update regardless
+            self.root.update_idletasks()
                 
         except Exception as e:
-            # This will catch any error during the insert or subsequent processing in this method
-            logger.error(f"Error INSIDE add_packet_to_tree for packet_num {packet_num_for_log}: {e}", exc_info=True) # exc_info=True will print the full traceback
+            logger.error(f"Error updating GUI: {e}")
+
+    def show_debug_info(self):
+        """Enhanced debug information - UPDATED for display troubleshooting"""
+        tree_children = self.packet_tree.get_children()
+        tree_count = len(tree_children)
+        
+        # Get first few items for inspection
+        sample_items = []
+        for i, child in enumerate(tree_children[:3]):
+            try:
+                item_data = self.packet_tree.item(child)
+                sample_items.append(f"Item {i+1}: {item_data.get('values', [])[:3]}")
+            except:
+                sample_items.append(f"Item {i+1}: Error reading")
+        
+        debug_info = f"""SimpleShark Debug Information
+
+Capture Status: {'Running' if self.running else 'Stopped'}
+Display Paused: {self.display_paused}
+Protocol Exclude Set: {self.protocol_exclude}
+Queue Size: {self.packet_queue.qsize()}
+Buffer Size: {self.packet_buffer.size()}
+Total Packets Seen: {self.packet_buffer.get_total_seen()}
+
+TREEVIEW ANALYSIS:
+Tree Children Count: {tree_count}
+Tree Widget Exists: {hasattr(self, 'packet_tree')}
+Tree Widget Visible: {self.packet_tree.winfo_viewable() if hasattr(self, 'packet_tree') else 'N/A'}
+Tree Widget Mapped: {self.packet_tree.winfo_ismapped() if hasattr(self, 'packet_tree') else 'N/A'}
+
+Sample Tree Items:
+{chr(10).join(sample_items) if sample_items else 'No items found'}
+
+Interface: {self.interface_var.get()}
+GUI Update Interval: {self.config.settings['gui_update_interval']}ms
+Batch Size: {self.config.settings['batch_size']}
+
+Thread Status:
+- Capture Thread: {'Alive' if self.capture_thread and self.capture_thread.is_alive() else 'Not running'}
+- Monitor Thread: {'Alive' if self.monitor_thread and self.monitor_thread.is_alive() else 'Not running'}
+
+Root Window Exists: {self.root.winfo_exists() if hasattr(self.root, 'winfo_exists') else 'Unknown'}
+Current Tab: {self.notebook.tab(self.notebook.select(), "text") if hasattr(self, 'notebook') else 'Unknown'}
+        """
+        messagebox.showinfo("Debug Information", debug_info)
+        logger.debug("Debug info requested by user")
+        
+        # CRITICAL FIX: Force a manual refresh attempt
+        try:
+            logger.debug("Attempting manual tree refresh...")
+            self.packet_tree.update()
+            self.packet_tree.update_idletasks()
+            self.root.update()
+            logger.debug("Manual refresh completed")
+        except Exception as e:
+            logger.error(f"Manual refresh failed: {e}")
+
+    def force_refresh_display(self):
+        """Force refresh display - TEMPORARY DEBUGGING METHOD"""
+        try:
+            # Clear tree
+            self.packet_tree.delete(*self.packet_tree.get_children())
+            
+            # Re-add all packets from buffer
+            packets = self.packet_buffer.get_packets()
+            logger.info(f"Force refresh: Re-adding {len(packets)} packets to tree")
+            
+            for packet in packets[-100:]:  # Last 100 packets
+                self.add_packet_to_tree(packet)
+            
+            # Force complete refresh
+            self.packet_tree.update()
+            self.root.update()
+            
+            tree_count = len(self.packet_tree.get_children())
+            logger.info(f"Force refresh completed. Tree now has {tree_count} items")
+            
+            messagebox.showinfo("Force Refresh", f"Refreshed display with {tree_count} packets")
+            
+        except Exception as e:
+            logger.error(f"Force refresh failed: {e}")
+            messagebox.showerror("Refresh Error", str(e))
     
     def update_resource_display(self, cpu: float, memory: float, 
                                bytes_sent: int, bytes_recv: int,
@@ -2601,7 +2755,7 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
     def export_to_excel(self):
         """Enhanced Excel export"""
         try:
-            timestamp = "2025-05-24_14:08:18".replace(":", "-")
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             default_filename = f"simpleshark_export_{timestamp}.xlsx"
             
             filename = filedialog.asksaveasfilename(
@@ -2713,7 +2867,6 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
                 self.add_packet_to_tree(packet_data)
                 
                 # Update statistics
-                # Update statistics
                 self.update_statistics(
                     packet_data.get("protocol", ""),
                     packet_data.get("src_ip", ""),
@@ -2739,7 +2892,7 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
     def export_settings(self):
         """Export current settings to file"""
         try:
-            timestamp = "2025-05-24_14:13:37".replace(":", "-")
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             filename = filedialog.asksaveasfilename(
                 defaultextension=".json",
                 filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")],
@@ -2809,7 +2962,7 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
     def export_logs(self):
         """Export application logs"""
         try:
-            timestamp = "2025-05-24_14:13:37".replace(":", "-")
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             filename = filedialog.asksaveasfilename(
                 defaultextension=".txt",
                 filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")],
@@ -2819,7 +2972,7 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
             if filename:
                 with open(filename, 'w', encoding='utf-8') as f:
                     f.write(f"=== SimpleShark v2.0 Application Logs ===\n")
-                    f.write(f"Export Date: 2025-05-24 14:13:37\n")
+                    f.write(f"Export Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                     f.write(f"Total App Logs: {len(self.app_logs)}\n")
                     f.write(f"Total Error Logs: {len(self.error_logs)}\n\n")
                     
@@ -2943,14 +3096,14 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
     
     def log_app(self, message: str):
         """Log application message with timestamp"""
-        timestamp = "2025-05-24 14:13:37"
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_msg = f"{timestamp} - {message}"
         self.app_logs.append(log_msg)
         logger.info(message)
     
     def log_error(self, message: str):
         """Log error message with timestamp"""
-        timestamp = "2025-05-24 14:13:37"
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_msg = f"{timestamp} - {message}"
         self.error_logs.append(log_msg)
         logger.error(message)
@@ -3039,7 +3192,7 @@ def main():
         
         logger.info("SimpleShark v2.0 GUI application started successfully")
         logger.info(f"Created by: clearblueyellow")
-        logger.info(f"Current date: 2025-05-24 14:13:37 UTC")
+        logger.info(f"Current date: 2025-05-24 21:50:15 UTC")
         
         # Start main event loop
         root.mainloop()
