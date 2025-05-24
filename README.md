@@ -2,7 +2,7 @@
 
 In the contemporary cybersecurity landscape, Security Operations Centers (SOCs) are confronted with an ever-increasing volume and sophistication of threats. To effectively manage this deluge of data, detect malicious activities, and respond swiftly to incidents, automation has become indispensable. Python, with its straightforward syntax, extensive libraries, and versatile capabilities, has emerged as a pivotal programming language for cybersecurity professionals, particularly within SOC environments. Its accessibility allows analysts who may not be dedicated software developers to create powerful tools, while its comprehensive standard library and rich ecosystem of third-party packages provide the means to tackle complex security challenges.
 
-## IOC Extractor from Unstructured Text
+## SimpleExtractor - IOC Extractor from Unstructured Text
 
 SOC analysts frequently encounter IOCs—such as IP addresses, domain names, file hashes, and URLs—embedded within unstructured text sources. These sources can include threat intelligence reports, security blogs, forum discussions, social media posts, or even internal incident notes. Manually sifting through large volumes of text to identify and extract these IOCs is a time-consuming, error-prone, and often tedious task. An automated IOC extractor script significantly streamlines this process, enabling analysts to quickly gather potential threat indicators for further investigation, enrichment, or input into security tools like SIEMs or TIPs. This automation frees up valuable analyst time, allowing them to focus on higher-value analytical tasks rather than manual data extraction. The ability to rapidly process diverse textual data for IOCs is crucial for maintaining situational awareness and responding effectively to emerging threats.
 
@@ -12,15 +12,13 @@ Capabilities: BTC addresses, email addresses, IPs, CVEs, domains, skype username
 
 YARA Rules: The script includes a basic YARA rule (example_rule) that looks for the string "malicious" in the text. You can expand this by loading your own YARA rule files or defining more complex rules. Feel free to modify the YARA rules or add more IOC extraction methods as needed.
 
-## Network Traffic Analyzer (PCAP Parsing)
+## SimpleShark - Network Traffic Analyzer
 
-Network packet captures (PCAP files) are invaluable for investigating security incidents, understanding network behavior, and performing forensic analysis. Tools like Wireshark provide extensive capabilities for manual PCAP analysis. However, dealing with large PCAP files or performing repetitive analytical tasks can be cumbersome. A Python script for PCAP parsing automates the extraction of specific information, identifies patterns, or flags suspicious activities within network traffic captures. This allows SOC analysts to quickly triage PCAPs, extract key metadata, or perform targeted searches without manually navigating through potentially millions of packets in Wireshark. This automation can significantly speed up the initial stages of network investigation.
+SimpleShark is an advanced, user-friendly network analyzer for Windows, macOS, and Linux that enables real-time monitoring and analysis of network traffic. Designed for IT professionals, security analysts, and enthusiasts, SimpleShark captures and displays live packet data, visualizes protocol usage, identifies top talkers and rare protocols, and tracks sessions between network endpoints. Integrated threat intelligence feeds (Spamhaus, OpenPhish, PhishTank, AbuseIPDB) provide instant detection of suspicious activity, while IP geolocation offers additional context for network events.
+
+With a modern, tabbed graphical interface, SimpleShark allows users to filter protocols, view detailed packet breakdowns, monitor system resource usage, and quickly export comprehensive logs for further analysis. The application is highly configurable, supports multi-sheet Excel reporting, and delivers deep insights into network behavior—all in an accessible, attractive package.
 
 Packages required: pyshark, tkinter, psutil, matplotlib, cartopy, geoip2, requests, pandas, openpyxl, and ipwhois
-
-API Key Requirements: Shodan VirusTotal AbuseIPDB
-
-Capabilities: 
 
 ## Splunk Custom Alert Actions/Enrichment Script
 
