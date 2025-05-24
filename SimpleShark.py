@@ -599,7 +599,11 @@ class SimpleSharkGUI:
         self.capture_start_time = None
         self.display_paused = False
         self.last_update_time = time.time()
-        
+
+        # FIXED: Clear protocol exclude set to ensure all packets are shown
+        self.protocol_exclude = set() # <--- THIS IS THE LINE
+        logger.debug(f"Protocol exclude set cleared: {self.protocol_exclude}")
+
         # GUI control variables
         self.chart_timeframe_var = tk.StringVar(value="minute")
         self.log_filter_var = tk.StringVar(value="All")
@@ -800,6 +804,9 @@ class SimpleSharkGUI:
         
         self.packet_tree = ttk.Treeview(tree_frame, columns=columns, 
                                        show="headings", height=22)
+
+        self.packet_tree.update_idletasks() # Ensure geometry is calculated
+        logger.info(f"Packet Tree Info: Width={self.packet_tree.winfo_width()}, Height={self.packet_tree.winfo_height()}, IsMapped={self.packet_tree.winfo_ismapped()}")
         
         # Enhanced column configuration
         column_config = {
@@ -2174,36 +2181,50 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
         try:
             batch_count = 0
             max_batch = self.config.settings['batch_size']
-            packets_added = 0
-            
+            packets_added_this_cycle = 0 # Renamed for clarity
+
             # DEBUG: Log queue status
             queue_size = self.packet_queue.qsize()
             if queue_size > 0:
-                logger.debug(f"GUI update: Queue has {queue_size} items to process")
+                logger.debug(f"update_gui: Queue has {queue_size} items to process. Display paused: {self.display_paused}")
             
+            if self.display_paused: # Check if display is paused
+                # Still process resource updates if any
+                temp_queue_holder = []
+                while not self.packet_queue.empty():
+                    item = self.packet_queue.get_nowait()
+                    if isinstance(item, tuple) and len(item) > 1 and item[0] == "RESOURCE":
+                        if len(item) >= 7:
+                            self.update_resource_display(item[1], item[2], item[3], item[4], item[5], item[6])
+                        else:
+                            self.update_resource_display(item[1], item[2], item[3], item[4], 0, 0)
+                    else:
+                        temp_queue_holder.append(item) # Put non-resource items back
+                for item in temp_queue_holder:
+                    self.packet_queue.put(item)
+                return # Don't process packet items if paused
+
             while batch_count < max_batch:
                 try:
                     item = self.packet_queue.get_nowait()
                     
                     if isinstance(item, dict):
-                        # Packet data - CRITICAL FIX: Check protocol exclusion PROPERLY
                         protocol = item.get("protocol", "")
+                        # Log before checking protocol_exclude
+                        logger.debug(f"update_gui: Processing packet item for GUI. Protocol={protocol}, ExcludeSet={self.protocol_exclude}")
                         if protocol not in self.protocol_exclude:
-                            logger.debug(f"Adding packet to tree: {protocol} (exclude set: {self.protocol_exclude})")
-                            self.add_packet_to_tree(item)
-                            packets_added += 1
+                            self.add_packet_to_tree(item) # This method now has detailed logging
+                            packets_added_this_cycle += 1
                         else:
-                            logger.debug(f"Excluding packet: {protocol}")
+                            logger.debug(f"update_gui: Excluding packet due to protocol_exclude: {protocol}")
                     
                     elif isinstance(item, tuple) and len(item) > 1 and item[0] == "RESOURCE":
-                        # Enhanced resource monitoring data
                         if len(item) >= 7:
                             self.update_resource_display(item[1], item[2], item[3], item[4], item[5], item[6])
                         else:
                             self.update_resource_display(item[1], item[2], item[3], item[4], 0, 0)
                     
                     elif isinstance(item, tuple) and len(item) > 1 and item[0] == "ERROR":
-                        # Error message
                         self.update_status(f"Error: {item[1]}", self.error_color)
                         self.log_error(item[1])
                     
@@ -2211,6 +2232,36 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
                     
                 except queue.Empty:
                     break
+            
+            if packets_added_this_cycle > 0:
+                logger.debug(f"update_gui: Added {packets_added_this_cycle} packets to tree in this cycle.")
+                # === TRY ADDING THIS LINE ===
+                self.root.update_idletasks() 
+                # =============================
+
+            # Update packet count and rate (this part seems okay)
+            total_packets = self.packet_buffer.get_total_seen()
+            buffer_size = self.packet_buffer.size()
+            
+            self.packet_count_label.config(text=f"Packets: {buffer_size:,} ({total_packets:,} total)")
+            
+            current_time = time.time()
+            if hasattr(self, 'last_update_time_rate_calc'): # Use a distinct variable name
+                time_diff = current_time - self.last_update_time_rate_calc
+                if time_diff >= 1.0:
+                    packet_diff = total_packets - self.last_packet_count_rate_calc
+                    self.packets_per_second = packet_diff / time_diff if time_diff > 0 else 0
+                    self.last_packet_count_rate_calc = total_packets
+                    self.last_update_time_rate_calc = current_time
+            else:
+                self.last_update_time_rate_calc = current_time
+                self.last_packet_count_rate_calc = total_packets
+            
+            self.packets_per_sec_label.config(text=f"Rate: {self.packets_per_second:.1f} pps")
+            
+        except Exception as e:
+            logger.error(f"Error updating GUI: {e}", exc_info=True)
+
             
             # Update packet count and rate
             total_packets = self.packet_buffer.get_total_seen()
@@ -2241,7 +2292,11 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
             logger.error(f"Error updating GUI: {e}")
     
     def add_packet_to_tree(self, packet_data: Dict[str, Any]):
-        """Enhanced packet tree insertion with color coding - COMPLETELY FIXED"""
+        """Enhanced packet tree insertion with detailed logging."""
+        packet_num_for_log = packet_data.get("packet_num", "UNKNOWN_NUM")
+        protocol_for_log = packet_data.get("protocol", "UNKNOWN_PROTO")
+        logger.debug(f"ENTERING add_packet_to_tree for packet_num: {packet_num_for_log}, protocol: {protocol_for_log}")
+        
         try:
             values = (
                 packet_data.get("packet_num", ""),
@@ -2256,31 +2311,42 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
                 packet_data.get("flags", ""),
                 packet_data.get("info", "")
             )
-            
-            # Insert at top for latest-first display
+            logger.debug(f"Values prepared for packet_num {packet_num_for_log}: {values}")
+
+            # === CRITICAL POINT: THE INSERTION ===
             item_id = self.packet_tree.insert("", 0, values=values)
+            # =====================================
             
-            # DEBUG: Log that packet was added to tree
-            logger.debug(f"Successfully added packet {packet_data.get('packet_num')} to tree: {packet_data.get('protocol')}")
+            logger.info(f"Treeview insert EXECUTED for packet_num {packet_num_for_log}. Returned item_id: '{item_id}'. Protocol: {protocol_for_log}") # Changed to INFO for visibility
+
+            # Check if item_id is valid (Treeview insert returns the item ID string)
+            if not item_id:
+                logger.warning(f"Treeview insert for packet_num {packet_num_for_log} returned an EMPTY item_id. Packet might not be visible.")
             
             # Color coding based on threats
             flags = packet_data.get("flags", "")
-            if "DROP" in flags or "PHISH" in flags:
-                self.packet_tree.set(item_id, "flags", "🚨 " + flags)
-            elif "SUSP_PORT" in flags:
-                self.packet_tree.set(item_id, "flags", "⚠️ " + flags)
-            elif flags:
-                self.packet_tree.set(item_id, "flags", "⚡ " + flags)
+            if flags and item_id: # Ensure item_id is valid before trying to set flags
+                logger.debug(f"Applying flags for packet_num {packet_num_for_log} (item_id: {item_id}): {flags}")
+                if "DROP" in flags or "PHISH" in flags:
+                    self.packet_tree.set(item_id, "flags", "🚨 " + flags)
+                elif "SUSP_PORT" in flags:
+                    self.packet_tree.set(item_id, "flags", "⚠️ " + flags)
+                else: 
+                    self.packet_tree.set(item_id, "flags", "⚡ " + flags)
             
             # Limit tree size for performance
             children = self.packet_tree.get_children()
             if len(children) > 1000:  # Limit to 1000 visible packets
+                logger.debug(f"Tree size limit ({self.config.settings.get('max_packets_in_tree', 1000)}) reached ({len(children)}), removing oldest.")
                 # Remove oldest entries
-                for old_item in children[1000:]:
+                for old_item in children[1000:]: # Adjust if max_packets_in_tree is used
                     self.packet_tree.delete(old_item)
+            
+            logger.debug(f"EXITING add_packet_to_tree NORMALLY for packet_num: {packet_num_for_log}")
                 
         except Exception as e:
-            logger.error(f"Error adding packet to tree: {e}")
+            # This will catch any error during the insert or subsequent processing in this method
+            logger.error(f"Error INSIDE add_packet_to_tree for packet_num {packet_num_for_log}: {e}", exc_info=True) # exc_info=True will print the full traceback
     
     def update_resource_display(self, cpu: float, memory: float, 
                                bytes_sent: int, bytes_recv: int,
