@@ -59,7 +59,7 @@ class Config:
         "max_packets": 10000,
         "burst_threshold": 400,
         "refresh_interval": 3600,
-        "gui_update_interval": 1000,  # Increased from 500ms to 1000ms for better stability
+        "gui_update_interval": 500,  # Reduced from 1000ms to 500ms for better responsiveness
         "batch_size": 50,  # Reduced from 100 to 50 for better processing
         "enable_geolocation": True,
         "enable_threat_feeds": True,
@@ -88,11 +88,11 @@ class Config:
                 # Merge with defaults to ensure all keys exist
                 settings = self.DEFAULT_SETTINGS.copy()
                 settings.update(loaded)
-                settings["last_modified"] = "2025-05-24 21:37:45"
+                settings["last_modified"] = "2025-05-24 22:55:09"
                 return settings
             else:
                 settings = self.DEFAULT_SETTINGS.copy()
-                settings["created_date"] = "2025-05-24 21:37:45"
+                settings["created_date"] = "2025-05-24 22:55:09"
                 return settings
         except (json.JSONDecodeError, IOError) as e:
             logger.error(f"Failed to load config: {e}")
@@ -101,7 +101,7 @@ class Config:
     def save_settings(self) -> bool:
         """Save settings to file"""
         try:
-            self.settings["last_modified"] = "2025-05-24 21:37:45"
+            self.settings["last_modified"] = "2025-05-24 22:55:09"
             self.settings["modified_by"] = "clearblueyellow"
             
             with open(self.config_file, 'w') as f:
@@ -580,7 +580,7 @@ class SimpleSharkGUI:
         self.geoip_reader = None
         self.geoip_status = "Not loaded"
         
-        # Filtering - FIXED: Initialize as empty set so NO protocols are excluded by default
+        # Filtering - Initialize as empty set so NO protocols are excluded by default
         self.protocol_exclude = set()
         
         # Logs with better structure
@@ -673,7 +673,7 @@ class SimpleSharkGUI:
                  background=[('selected', self.accent_color)], 
                  foreground=[('selected', self.primary_bg)])
         
-        # Enhanced treeview styling
+        # Enhanced treeview styling with IMPROVED VISIBILITY
         style.configure('Treeview', 
                        background=self.secondary_bg, 
                        foreground=self.text_fg, 
@@ -760,10 +760,20 @@ class SimpleSharkGUI:
                                           command=self.show_protocol_selector)
         self.protocols_button.pack(side=tk.LEFT, padx=5)
         
+        # New Refresh Display button
+        self.refresh_display_button = ttk.Button(control_frame, text="🔄 Refresh Display", 
+                                               command=self.refresh_display)
+        self.refresh_display_button.pack(side=tk.LEFT, padx=5)
+        
         # DEBUG: Add debug button
         self.debug_button = ttk.Button(control_frame, text="🐛 Debug Info", 
                                       command=self.show_debug_info)
         self.debug_button.pack(side=tk.LEFT, padx=5)
+        
+        # Force refresh button - ADDED for troubleshooting
+        self.force_refresh_button = ttk.Button(control_frame, text="🔄 Force Refresh", 
+                                             command=self.force_refresh_display)
+        self.force_refresh_button.pack(side=tk.LEFT, padx=5)
         
         # Enhanced status frame with multiple indicators
         status_frame = ttk.Frame(self.main_frame)
@@ -867,33 +877,6 @@ class SimpleSharkGUI:
         
         self.buffer_usage_label = ttk.Label(perf_inner, text="Buffer: 0%")
         self.buffer_usage_label.pack(side=tk.RIGHT, padx=10)
-    
-    def show_debug_info(self):
-        """Show debug information - ADDED for troubleshooting"""
-        debug_info = f"""SimpleShark Debug Information
-
-Capture Status: {'Running' if self.running else 'Stopped'}
-Display Paused: {self.display_paused}
-Protocol Exclude Set: {self.protocol_exclude}
-Queue Size: {self.packet_queue.qsize()}
-Buffer Size: {self.packet_buffer.size()}
-Total Packets Seen: {self.packet_buffer.get_total_seen()}
-Tree Children Count: {len(self.packet_tree.get_children())}
-Interface: {self.interface_var.get()}
-GUI Update Interval: {self.config.settings['gui_update_interval']}ms
-Batch Size: {self.config.settings['batch_size']}
-
-Thread Status:
-- Capture Thread: {'Alive' if self.capture_thread and self.capture_thread.is_alive() else 'Not running'}
-- Monitor Thread: {'Alive' if self.monitor_thread and self.monitor_thread.is_alive() else 'Not running'}
-
-Last 5 Protocol Stats:
-{dict(list(self.protocol_stats.items())[:5]) if self.protocol_stats else 'None'}
-
-Root Window Exists: {self.root.winfo_exists() if hasattr(self.root, 'winfo_exists') else 'Unknown'}
-        """
-        messagebox.showinfo("Debug Information", debug_info)
-        logger.debug("Debug info requested by user")
     
     def setup_packet_details_tab(self):
         """Setup enhanced packet details tab"""
@@ -1023,7 +1006,7 @@ Root Window Exists: {self.root.winfo_exists() if hasattr(self.root, 'winfo_exist
         
         # Simple implementation for now
         stats_label = ttk.Label(self.netstats_frame, 
-                               text="Network Statistics\n\nThis tab will show detailed traffic analysis including:\n\n• Top Talkers\n• Protocol Distribution\n• Traffic Volume Charts\n• Session Analysis\n\nFeatures will be implemented as data is captured.",
+                               text="Network Statistics\n\nThis tab will show detailed traffic analysis including:\n\n• Top Talkers\n• Protocol Distribution\n• Traffic Volume Charts\n• Session Statistics",
                                font=('Segoe UI', 11),
                                justify=tk.CENTER)
         stats_label.pack(expand=True, pady=50)
@@ -1035,7 +1018,7 @@ Root Window Exists: {self.root.winfo_exists() if hasattr(self.root, 'winfo_exist
         
         # Simple implementation for now
         insights_label = ttk.Label(self.proto_insights_frame, 
-                                  text="Protocol Insights\n\nThis tab will provide advanced protocol analysis including:\n\n• Protocol Breakdown & Distribution\n• Burst Detection\n• Rare Protocol Identification\n• Protocol Performance Metrics\n\nAnalysis will begin once packet capture starts.",
+                                  text="Protocol Insights\n\nThis tab will provide advanced protocol analysis including:\n\n• Protocol Breakdown & Distribution\n• Burst Detection\n• Rare Protocol Detection\n• Security Analysis",
                                   font=('Segoe UI', 11),
                                   justify=tk.CENTER)
         insights_label.pack(expand=True, pady=50)
@@ -2184,152 +2167,6 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
         self.root.after(5000, self.schedule_logs_update)  # Every 5 seconds
     
     def update_gui(self):
-        """Enhanced GUI update with batch processing - FIXED NUMBERING ISSUE"""
-        try:
-            batch_count = 0
-            max_batch = self.config.settings['batch_size']
-            packets_added = 0
-            
-            # DEBUG: Log queue status
-            queue_size = self.packet_queue.qsize()
-            if queue_size > 0:
-                logger.debug(f"GUI update: Queue has {queue_size} items to process. Display paused: {self.display_paused}")
-            
-            while batch_count < max_batch:
-                try:
-                    item = self.packet_queue.get_nowait()
-                    
-                    if isinstance(item, dict):
-                        # Packet data - CRITICAL FIX: Check protocol exclusion PROPERLY
-                        protocol = item.get("protocol", "")
-                        packet_num = item.get("packet_num", "unknown")
-                        
-                        logger.debug(f"update_gui: Processing packet item for GUI. Protocol={protocol}, ExcludeSet={self.protocol_exclude}")
-                        
-                        if protocol not in self.protocol_exclude:
-                            logger.debug(f"Adding packet {packet_num} to tree: {protocol}")
-                            self.add_packet_to_tree(item)
-                            packets_added += 1
-                        else:
-                            logger.debug(f"Excluding packet {packet_num}: {protocol}")
-                    
-                    elif isinstance(item, tuple) and len(item) > 1 and item[0] == "RESOURCE":
-                        # Enhanced resource monitoring data
-                        if len(item) >= 7:
-                            self.update_resource_display(item[1], item[2], item[3], item[4], item[5], item[6])
-                        else:
-                            self.update_resource_display(item[1], item[2], item[3], item[4], 0, 0)
-                    
-                    elif isinstance(item, tuple) and len(item) > 1 and item[0] == "ERROR":
-                        # Error message
-                        self.update_status(f"Error: {item[1]}", self.error_color)
-                        self.log_error(item[1])
-                    
-                    batch_count += 1
-                    
-                except queue.Empty:
-                    break
-            
-            # Update packet count and rate
-            total_packets = self.packet_buffer.get_total_seen()
-            buffer_size = self.packet_buffer.size()
-            
-            self.packet_count_label.config(text=f"Packets: {buffer_size:,} ({total_packets:,} total)")
-            
-            # Calculate packets per second
-            current_time = time.time()
-            if hasattr(self, 'last_update_time'):
-                time_diff = current_time - self.last_update_time
-                if time_diff >= 1.0:  # Update rate every second
-                    packet_diff = total_packets - self.last_packet_count
-                    self.packets_per_second = packet_diff / time_diff
-                    self.last_packet_count = total_packets
-                    self.last_update_time = current_time
-            else:
-                self.last_update_time = current_time
-                self.last_packet_count = total_packets
-            
-            self.packets_per_sec_label.config(text=f"Rate: {self.packets_per_second:.1f} pps")
-            
-            # DEBUG: Log if packets were added
-            if packets_added > 0:
-                logger.debug(f"update_gui: Added {packets_added} packets to tree in this cycle.")
-            
-            # CRITICAL FIX: Force GUI update to ensure visibility
-            if packets_added > 0:
-                self.root.update_idletasks()  # Force GUI refresh
-                
-        except Exception as e:
-            logger.error(f"Error updating GUI: {e}")
-    
-    def add_packet_to_tree(self, packet_data: Dict[str, Any]):
-        """Enhanced packet tree insertion - CRITICAL DISPLAY FIX"""
-        try:
-            packet_num = packet_data.get("packet_num", "unknown")
-            protocol = packet_data.get("protocol", "unknown")
-            
-            logger.debug(f"ENTERING add_packet_to_tree for packet_num: {packet_num}, protocol: {protocol}")
-            
-            values = (
-                packet_data.get("packet_num", ""),
-                packet_data.get("timestamp", ""),
-                packet_data.get("protocol", ""),
-                packet_data.get("src_ip", ""),
-                packet_data.get("src_port", ""),
-                packet_data.get("dst_ip", ""),
-                packet_data.get("dst_port", ""),
-                packet_data.get("bytes", ""),
-                packet_data.get("geo", ""),
-                packet_data.get("flags", ""),
-                packet_data.get("info", "")
-            )
-            
-            logger.debug(f"Values prepared for packet_num {packet_num}: {values}")
-            
-            # CRITICAL FIX: Use `end` instead of index 0 to ensure visibility
-            item_id = self.packet_tree.insert("", "end", values=values)
-            
-            logger.info(f"Treeview insert EXECUTED for packet_num {packet_num}. Returned item_id: '{item_id}'. Protocol: {protocol}")
-            
-            # Color coding based on threats
-            flags = packet_data.get("flags", "")
-            if flags:
-                logger.debug(f"Applying flags for packet_num {packet_num} (item_id: {item_id}): {flags}")
-                
-                if "DROP" in flags or "PHISH" in flags:
-                    self.packet_tree.set(item_id, "flags", "🚨 " + flags)
-                elif "SUSP_PORT" in flags:
-                    self.packet_tree.set(item_id, "flags", "⚠️ " + flags)
-                elif "EXT_TO_PRIV" in flags:
-                    self.packet_tree.set(item_id, "flags", "⚡ " + flags)
-                else:
-                    self.packet_tree.set(item_id, "flags", "⚡ " + flags)
-            
-            # CRITICAL FIX: Force multiple levels of GUI updates
-            self.packet_tree.update_idletasks()
-            self.root.update_idletasks()
-            
-            # CRITICAL FIX: Ensure the item is visible by scrolling to it
-            self.packet_tree.see(item_id)
-            
-            # Limit tree size for performance
-            children = self.packet_tree.get_children()
-            if len(children) > 1000:
-                # Remove oldest entries (first items when using "end")
-                for old_item in children[:-1000]:
-                    self.packet_tree.delete(old_item)
-            
-            logger.debug(f"EXITING add_packet_to_tree NORMALLY for packet_num: {packet_num}")
-            
-            # CRITICAL FIX: Return True to indicate successful addition
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error adding packet to tree: {e}")
-            logger.debug(f"EXITING add_packet_to_tree WITH ERROR for packet_num: {packet_num}")
-            return False
-
-    def update_gui(self):
         """Enhanced GUI update - CRITICAL DISPLAY FIX"""
         try:
             batch_count = 0
@@ -2420,6 +2257,112 @@ Unique Dest IPs: {len(self.top_talkers_dst):,}
         except Exception as e:
             logger.error(f"Error updating GUI: {e}")
 
+    def add_packet_to_tree(self, packet_data: Dict[str, Any]):
+        """Enhanced packet tree insertion with guaranteed visibility"""
+        try:
+            packet_num = packet_data.get("packet_num", "unknown")
+            protocol = packet_data.get("protocol", "unknown")
+            
+            logger.debug(f"ENTERING add_packet_to_tree for packet_num: {packet_num}, protocol: {protocol}")
+            
+            values = (
+                packet_data.get("packet_num", ""),
+                packet_data.get("timestamp", ""),
+                packet_data.get("protocol", ""),
+                packet_data.get("src_ip", ""),
+                packet_data.get("src_port", ""),
+                packet_data.get("dst_ip", ""),
+                packet_data.get("dst_port", ""),
+                packet_data.get("bytes", ""),
+                packet_data.get("geo", ""),
+                packet_data.get("flags", ""),
+                packet_data.get("info", "")
+            )
+            
+            logger.debug(f"Values prepared for packet_num {packet_num}: {values}")
+            
+            # CRITICAL FIX: Insert at index 0 (top) for better visibility
+            item_id = self.packet_tree.insert("", 0, values=values)
+            
+            logger.debug(f"Treeview insert EXECUTED for packet_num {packet_num}. Returned item_id: '{item_id}'. Protocol: {protocol}")
+            
+            # Color coding based on threats
+            flags = packet_data.get("flags", "")
+            if flags:
+                logger.debug(f"Applying flags for packet_num {packet_num} (item_id: {item_id}): {flags}")
+                
+                if "DROP" in flags or "PHISH" in flags:
+                    self.packet_tree.set(item_id, "flags", "🚨 " + flags)
+                elif "SUSP_PORT" in flags:
+                    self.packet_tree.set(item_id, "flags", "⚠️ " + flags)
+                elif "EXT_TO_PRIV" in flags:
+                    self.packet_tree.set(item_id, "flags", "⚡ " + flags)
+                else:
+                    self.packet_tree.set(item_id, "flags", "⚡ " + flags)
+            
+            # CRITICAL FIX: Ensure the item is visible
+            self.packet_tree.see(item_id)
+            
+            # CRITICAL FIX: Force visual update of the tree widget
+            self.packet_tree.update()
+            
+            # CRITICAL FIX: Ensure the tree maintains focus on the main window
+            if not self.packet_tree.focus():
+                self.packet_tree.focus_set()
+            
+            # Limit tree size for performance
+            children = self.packet_tree.get_children()
+            if len(children) > 1000:
+                # Remove oldest entries (last when using index 0)
+                for old_item in children[1000:]:
+                    self.packet_tree.delete(old_item)
+            
+            logger.debug(f"EXITING add_packet_to_tree NORMALLY for packet_num: {packet_num}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error adding packet to tree: {e}")
+            logger.debug(f"EXITING add_packet_to_tree WITH ERROR for packet_num: {packet_num}")
+            return False
+    
+    def refresh_display(self):
+        """Force refresh of the packet display"""
+        try:
+            # Store current selection
+            selected_items = self.packet_tree.selection()
+            selected_item_id = selected_items[0] if selected_items else None
+            
+            # Clear tree
+            self.packet_tree.delete(*self.packet_tree.get_children())
+            
+            # Re-add all packets from buffer (most recent first)
+            packets = self.packet_buffer.get_packets()
+            if packets:
+                self.log_app(f"Refreshing display with {len(packets)} packets")
+                
+                # Show most recent packets first (display limit of 1000)
+                display_packets = packets[-1000:] if len(packets) > 1000 else packets
+                for packet in reversed(display_packets):
+                    self.add_packet_to_tree(packet)
+                
+                # Restore selection if possible
+                if selected_item_id and selected_item_id in self.packet_tree.get_children():
+                    self.packet_tree.selection_set(selected_item_id)
+                    self.packet_tree.see(selected_item_id)
+                
+                # Force tree update
+                self.packet_tree.update()
+                self.root.update_idletasks()
+                
+                self.update_status(f"Display refreshed with {len(display_packets)} packets", self.success_color)
+            else:
+                self.update_status("No packets to display", self.warning_color)
+                
+        except Exception as e:
+            error_msg = f"Display refresh error: {e}"
+            self.update_status(error_msg, self.error_color)
+            self.log_error(error_msg)
+    
     def show_debug_info(self):
         """Enhanced debug information - UPDATED for display troubleshooting"""
         tree_children = self.packet_tree.get_children()
@@ -2486,6 +2429,7 @@ Current Tab: {self.notebook.tab(self.notebook.select(), "text") if hasattr(self,
             packets = self.packet_buffer.get_packets()
             logger.info(f"Force refresh: Re-adding {len(packets)} packets to tree")
             
+            # IMPROVED: Show most recent packets first (last 100)
             for packet in packets[-100:]:  # Last 100 packets
                 self.add_packet_to_tree(packet)
             
@@ -2932,7 +2876,14 @@ Current Tab: {self.notebook.tab(self.notebook.select(), "text") if hasattr(self,
             self.interface_var.set(self.config.settings.get("interface", ""))
             self.geolite_var.set(self.config.settings.get("geolite_path", ""))
             self.abuseipdb_var.set(self.config.settings.get("abuseipdb_key", ""))
-            # Update other UI elements as needed
+            self.max_packets_var.set(str(self.config.settings.get("max_packets", 10000)))
+            self.gui_interval_var.set(str(self.config.settings.get("gui_update_interval", 500)))
+            self.batch_size_var.set(str(self.config.settings.get("batch_size", 50)))
+            self.enable_geo_var.set(self.config.settings.get("enable_geolocation", True))
+            self.enable_threats_var.set(self.config.settings.get("enable_threat_feeds", True))
+            self.enable_hex_var.set(self.config.settings.get("enable_hex_dumps", True))
+            self.promiscuous_var.set(self.config.settings.get("promiscuous_mode", False))
+            self.capture_filter_var.set(self.config.settings.get("capture_filter", ""))
             
             messagebox.showinfo("Import Complete", f"Settings imported from:\n{filename}")
             self.log_app(f"Settings imported from {filename}")
@@ -3192,7 +3143,7 @@ def main():
         
         logger.info("SimpleShark v2.0 GUI application started successfully")
         logger.info(f"Created by: clearblueyellow")
-        logger.info(f"Current date: 2025-05-24 21:50:15 UTC")
+        logger.info(f"Current date: 2025-05-24 23:09:31 UTC")
         
         # Start main event loop
         root.mainloop()
