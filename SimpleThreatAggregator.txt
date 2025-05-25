@@ -1,0 +1,28 @@
+Overview:
+I want to use Python to create a light-weight aggregator of cybersecurity threat intelligence data from as many free or open source data sources as possible that serves as a plugin for other projects. The data needs to be transformed, cleaned, deduplicated, and organized into a structured format, if possible. Only a limited amount of the data will be saved, so the SimpleThreatAggregator will serve as the live data feed plugin for various purposes. One of the projects I plan to use the data for is to create a ML model that predicts cybersecurity threats. Another project is to create an application that visualizes the data. Another project is an application that plugs into a network to apply the intelligence to help protect the host network.
+
+Threat Data Providers:
+VirusTotal
+GreyNoise
+CyberSixGill
+Recorded Future
+Filigran
+Threatbook CTI
+Check Point Threat Map
+Live Threat Map Radware
+Cyber Map Kapersky
+SOCRadar
+ThreatIntelligencePlatform
+MISP
+Anomali
+*Any other similar services that are free
+
+Output:
+The ability to provide any file format as an output as needed.
+
+Data Collection Intervals:
+Not to exceed API rate limits. May have to be once per hour initially or less frequent than that.
+
+Data Processing Requirements:
+The plugin needs to be robust enough to process several MBs of data a minute or more. The plugin needs to be able to store up to 100 GBs of data or more.
+
