@@ -20,6 +20,14 @@ With a modern, tabbed graphical interface, SimpleShark allows users to filter pr
 
 Packages required: pyshark, tkinter, psutil, matplotlib, cartopy, geoip2, requests, pandas, openpyxl, and ipwhois
 
+## SimpleThreatAggregator
+
+SimpleThreatAggregator is a comprehensive, open-source threat intelligence platform built with Python and PyQt6 that automates the collection, analysis, and visualization of cybersecurity threat data from multiple sources. The application aggregates Indicators of Compromise (IOCs) from leading threat intelligence providers including VirusTotal, GreyNoise, AbuseIPDB, AlienVault OTX, MISP, and URLhaus, while also collecting Common Vulnerabilities and Exposures (CVE) data from NIST NVD and GitHub Security Advisories. It features an intuitive tabbed GUI interface for configuration management, real-time status monitoring, and interactive data visualization, along with robust SQLite database storage, REST API endpoints, and comprehensive export capabilities for CSV and machine learning feature extraction.
+
+The platform is designed for cybersecurity professionals, threat hunters, and security researchers who need to centralize threat intelligence feeds into a single, manageable interface. With its asynchronous data collection engine, built-in rate limiting, and modular provider architecture, SimpleThreatAggregator can scale from individual research projects to enterprise-level threat intelligence operations. The application includes advanced features such as threat scoring algorithms, temporal analysis, data correlation capabilities, and seamless integration options through its REST API, making it an essential tool for proactive threat detection and security analytics workflows.
+
+Packages required: PyQt6 httpx pandas matplotlib fastapi uvicorn sqlite3
+
 ## Splunk Custom Alert Actions/Enrichment Script
 
 Splunk is a cornerstone of many SOCs for log aggregation, searching, and alerting. While Splunk's built-in alerting capabilities are robust, Python scripts can extend them significantly by enabling custom alert actions and automated enrichment of alert data. Instead of an alert merely triggering an email or a ticket, a custom Python script can execute a complex workflow. This could involve querying external threat intelligence feeds for IOCs found in the alert, checking internal asset databases for system ownership, looking up WHOIS information for suspicious domains, or even initiating automated responses like adding an IP to a firewall blocklist via an API. The splunk-alert-script found in the Splunk-Automation-Tools repository, which polls the Splunk API to generate alerts from search results, exemplifies a form of custom alerting logic. Such scripts transform raw alerts into more context-rich and actionable intelligence.
