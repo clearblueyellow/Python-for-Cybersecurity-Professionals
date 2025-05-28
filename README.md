@@ -20,7 +20,7 @@ With a modern, tabbed graphical interface, SimpleShark allows users to filter pr
 
 Packages required: pyshark, tkinter, psutil, matplotlib, cartopy, geoip2, requests, pandas, openpyxl, and ipwhois
 
-## SimpleThreatAggregator - Open-Source Threat Intelligence Platform
+## SimpleThreatAggregator - Open-Source Threat Intelligence Aggregator
 
 SimpleThreatAggregator is a comprehensive, open-source threat intelligence platform built with Python and PyQt6 that automates the collection, analysis, and visualization of cybersecurity threat data from multiple sources. The application aggregates Indicators of Compromise (IOCs) from leading threat intelligence providers including VirusTotal, GreyNoise, AbuseIPDB, AlienVault OTX, MISP, and URLhaus, while also collecting Common Vulnerabilities and Exposures (CVE) data from NIST NVD and GitHub Security Advisories. It features an intuitive tabbed GUI interface for configuration management, real-time status monitoring, and interactive data visualization, along with robust SQLite database storage, REST API endpoints, and comprehensive export capabilities for CSV and machine learning feature extraction.
 
